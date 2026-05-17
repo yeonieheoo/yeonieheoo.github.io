@@ -23,8 +23,70 @@ document.addEventListener('DOMContentLoaded', () => {
     link.addEventListener('click', () => nav.classList.remove('is-open'));
   });
 
-  /* ---------- Animated counters for impact metrics ---------- */
-  const metricValues = document.querySelectorAll('.metric__value');
+  /* ---------- Text scramble for narrative heading ---------- */
+  function initScramble(el) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#@&·%$';
+
+    // Walk all text nodes, wrap each non-whitespace char in a span
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    let node;
+    while ((node = walker.nextNode())) textNodes.push(node);
+
+    textNodes.forEach(textNode => {
+      const text = textNode.textContent;
+      const frag = document.createDocumentFragment();
+      [...text].forEach(char => {
+        if (/\s/.test(char)) {
+          frag.appendChild(document.createTextNode(char));
+        } else {
+          const span = document.createElement('span');
+          span.className = 'scramble-char';
+          span.dataset.final = char;
+          span.textContent = chars[Math.floor(Math.random() * chars.length)];
+          frag.appendChild(span);
+        }
+      });
+      textNode.parentNode.replaceChild(frag, textNode);
+    });
+
+    const spans = [...el.querySelectorAll('.scramble-char')];
+    const DURATION = 250;
+    const STAGGER = 10;
+
+    spans.forEach((span, i) => {
+      const finalChar = span.dataset.final;
+      const startAt = performance.now() + i * STAGGER;
+
+      const tick = (now) => {
+        if (now < startAt) { requestAnimationFrame(tick); return; }
+        const elapsed = now - startAt;
+        if (elapsed < DURATION) {
+          span.textContent = chars[Math.floor(Math.random() * chars.length)];
+          requestAnimationFrame(tick);
+        } else {
+          span.textContent = finalChar;
+        }
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  const narrativeHeading = document.querySelector('.narrative__heading');
+  if (narrativeHeading) {
+    const scrambleObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          initScramble(narrativeHeading);
+          scrambleObserver.unobserve(narrativeHeading);
+        }
+      });
+    }, { threshold: 0.3 });
+    scrambleObserver.observe(narrativeHeading);
+  }
+
+  /* ---------- Animated counters for impact metrics + narrative metrics ---------- */
+  const metricValues = document.querySelectorAll('.metric__value, .n-metric__val');
   const counterObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
